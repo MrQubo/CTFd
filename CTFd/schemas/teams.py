@@ -12,7 +12,7 @@ class TeamSchema(ma.ModelSchema):
     class Meta:
         model = Teams
         include_fk = True
-        dump_only = ("id", "oauth_id", "created", "members")
+        dump_only = ("id", "created", "members")
         load_only = ("password",)
 
     name = field_for(
@@ -189,7 +189,6 @@ class TeamSchema(ma.ModelSchema):
             "bracket",
             "members",
             "id",
-            "oauth_id",
             "captain_id",
         ],
         "self": [
@@ -201,7 +200,6 @@ class TeamSchema(ma.ModelSchema):
             "bracket",
             "members",
             "id",
-            "oauth_id",
             "password",
             "captain_id",
         ],
@@ -218,7 +216,6 @@ class TeamSchema(ma.ModelSchema):
             "members",
             "hidden",
             "id",
-            "oauth_id",
             "password",
             "captain_id",
         ],

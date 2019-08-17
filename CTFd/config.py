@@ -238,15 +238,6 @@ class Config(object):
     UPDATE_CHECK = not os.getenv("UPDATE_CHECK")  # Defaults True
     APPLICATION_ROOT = os.getenv("APPLICATION_ROOT") or "/"
 
-    """
-    === OAUTH ===
-
-    MajorLeagueCyber Integration
-        Register an event at https://majorleaguecyber.org/ and use the Client ID and Client Secret here
-    """
-    OAUTH_CLIENT_ID = os.getenv("OAUTH_CLIENT_ID")
-    OAUTH_CLIENT_SECRET = os.getenv("OAUTH_CLIENT_SECRET")
-
 
 class TestingConfig(Config):
     SECRET_KEY = "AAAAAAAAAAAAAAAAAAAA"

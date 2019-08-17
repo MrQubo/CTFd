@@ -40,7 +40,6 @@ class ScoreboardList(Resource):
                 "account_id": x.account_id,
                 "account_url": generate_account_url(account_id=x.account_id),
                 "account_type": account_type,
-                "oauth_id": x.oauth_id,
                 "name": x.name,
                 "score": int(x.score),
             }
@@ -51,7 +50,6 @@ class ScoreboardList(Resource):
                     members.append(
                         {
                             "id": member.id,
-                            "oauth_id": member.oauth_id,
                             "name": member.name,
                             "score": int(member.score),
                         }

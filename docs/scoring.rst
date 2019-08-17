@@ -21,20 +21,3 @@ Thus Team X will be considered the tie winner.
 
 Formats
 -------
-
-MajorLeagueCyber
-~~~~~~~~~~~~~~~~
-MajorLeagueCyber (MLC) is a cyber security event tracker designed and maintained by the developers of CTFd. It provides polling of the CTFd API and can record and aggregate scores between competitions/events. It supports parsing and processing of CTFd's built in scoreboard API format.
-
-To register your event with MLC:
-
- 1. Register an account at https://www.majorleaguecyber.org/ if you don't already have one.
- 2. Create a new event.
- 3. Edit the event and add the API Scoreboard URL under the Integrations section. For CTFd you should enter ``https://[CTFd Instance URL]/api/v1/scoreboard``
- 4. Access the JSON scoreboard API from MajorLeagueCyber by going to ``https://www.majorleaguecyber.org/events/[EVENT_ID]/[EVENT_NAME]/scoreboard.json``
-
-CTFTime
-~~~~~~~
-In prior versions CTFd supported a CTFTime compatible scoreboard. This is no longer directly supported because the CTFTime scoreboard format is inherently limiting. However, MLC allows for the polling of any JSON scoreboard API and can translate to the CTFTime scoreboard format.
-
-After registering your event on MLC you can access the legacy scoreboard format by going to ``https://www.majorleaguecyber.org/events/[EVENT_ID]/[EVENT_NAME]/scoreboard.json?format=legacy``.

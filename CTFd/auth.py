@@ -9,9 +9,9 @@ from flask import (
 )
 from itsdangerous.exc import BadTimeSignature, SignatureExpired, BadSignature
 
-from CTFd.models import db, Users, Teams
+from CTFd.models import db, Users
 
-from CTFd.utils import get_config, get_app_config
+from CTFd.utils import get_config
 from CTFd.utils.decorators import ratelimit
 from CTFd.utils import user as current_user
 from CTFd.utils import config, validators
@@ -21,13 +21,10 @@ from CTFd.utils.crypto import verify_password
 from CTFd.utils.logging import log
 from CTFd.utils.decorators.visibility import check_registration_visibility
 from CTFd.utils.config import is_teams_mode
-from CTFd.utils.config.visibility import registration_visible
-from CTFd.utils.modes import TEAMS_MODE
 from CTFd.utils.security.signing import unserialize
-from CTFd.utils.helpers import error_for, get_errors
+from CTFd.utils.helpers import get_errors
 
 import base64
-import requests
 
 auth = Blueprint("auth", __name__)
 
@@ -291,136 +288,6 @@ def login():
     else:
         db.session.close()
         return render_template("login.html", errors=errors)
-
-
-@auth.route("/oauth")
-def oauth_login():
-    endpoint = (
-        get_app_config("OAUTH_AUTHORIZATION_ENDPOINT")
-        or get_config("oauth_authorization_endpoint")
-        or "https://auth.majorleaguecyber.org/oauth/authorize"
-    )
-
-    if get_config("user_mode") == "teams":
-        scope = "profile team"
-    else:
-        scope = "profile"
-
-    client_id = get_app_config("OAUTH_CLIENT_ID") or get_config("oauth_client_id")
-
-    if client_id is None:
-        error_for(
-            endpoint="auth.login",
-            message="OAuth Settings not configured. "
-            "Ask your CTF administrator to configure MajorLeagueCyber integration.",
-        )
-        return redirect(url_for("auth.login"))
-
-    redirect_url = "{endpoint}?response_type=code&client_id={client_id}&scope={scope}&state={state}".format(
-        endpoint=endpoint, client_id=client_id, scope=scope, state=session["nonce"]
-    )
-    return redirect(redirect_url)
-
-
-@auth.route("/redirect", methods=["GET"])
-@ratelimit(method="GET", limit=10, interval=60)
-def oauth_redirect():
-    oauth_code = request.args.get("code")
-    state = request.args.get("state")
-    if session["nonce"] != state:
-        log("logins", "[{date}] {ip} - OAuth State validation mismatch")
-        error_for(endpoint="auth.login", message="OAuth State validation mismatch.")
-        return redirect(url_for("auth.login"))
-
-    if oauth_code:
-        url = (
-            get_app_config("OAUTH_TOKEN_ENDPOINT")
-            or get_config("oauth_token_endpoint")
-            or "https://auth.majorleaguecyber.org/oauth/token"
-        )
-
-        client_id = get_app_config("OAUTH_CLIENT_ID") or get_config("oauth_client_id")
-        client_secret = get_app_config("OAUTH_CLIENT_SECRET") or get_config(
-            "oauth_client_secret"
-        )
-        headers = {"content-type": "application/x-www-form-urlencoded"}
-        data = {
-            "code": oauth_code,
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "grant_type": "authorization_code",
-        }
-        token_request = requests.post(url, data=data, headers=headers)
-
-        if token_request.status_code == requests.codes.ok:
-            token = token_request.json()["access_token"]
-            user_url = (
-                get_app_config("OAUTH_API_ENDPOINT")
-                or get_config("oauth_api_endpoint")
-                or "https://api.majorleaguecyber.org/user"
-            )
-
-            headers = {
-                "Authorization": "Bearer " + str(token),
-                "Content-type": "application/json",
-            }
-            api_data = requests.get(url=user_url, headers=headers).json()
-
-            user_id = api_data["id"]
-            user_name = api_data["name"]
-            user_email = api_data["email"]
-
-            user = Users.query.filter_by(email=user_email).first()
-            if user is None:
-                # Check if we are allowing registration before creating users
-                if registration_visible():
-                    user = Users(
-                        name=user_name,
-                        email=user_email,
-                        oauth_id=user_id,
-                        verified=True,
-                    )
-                    db.session.add(user)
-                    db.session.commit()
-                else:
-                    log("logins", "[{date}] {ip} - Public registration via MLC blocked")
-                    error_for(
-                        endpoint="auth.login",
-                        message="Public registration is disabled. Please try again later.",
-                    )
-                    return redirect(url_for("auth.login"))
-
-            if get_config("user_mode") == TEAMS_MODE:
-                team_id = api_data["team"]["id"]
-                team_name = api_data["team"]["name"]
-
-                team = Teams.query.filter_by(oauth_id=team_id).first()
-                if team is None:
-                    team = Teams(name=team_name, oauth_id=team_id, captain_id=user.id)
-                    db.session.add(team)
-                    db.session.commit()
-
-                team.members.append(user)
-                db.session.commit()
-
-            if user.oauth_id is None:
-                user.oauth_id = user_id
-                user.verified = True
-                db.session.commit()
-
-            login_user(user)
-
-            return redirect(url_for("challenges.listing"))
-        else:
-            log("logins", "[{date}] {ip} - OAuth token retrieval failure")
-            error_for(endpoint="auth.login", message="OAuth token retrieval failure.")
-            return redirect(url_for("auth.login"))
-    else:
-        log("logins", "[{date}] {ip} - Received redirect without OAuth code")
-        error_for(
-            endpoint="auth.login", message="Received redirect without OAuth code."
-        )
-        return redirect(url_for("auth.login"))
 
 
 @auth.route("/logout")

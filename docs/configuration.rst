@@ -135,13 +135,6 @@ APPLICATION_ROOT
 Specifies what path CTFd is mounted under. It can be used to run CTFd in a subdirectory.
 Example: /ctfd
 
-OAUTH_CLIENT_ID
-~~~~~~~~~~~~~~~
-
-
-OAUTH_CLIENT_SECRET
-~~~~~~~~~~~~~~~~~~~
-
 
 Application Level Configuration
 -------------------------------
