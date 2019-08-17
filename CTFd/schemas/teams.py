@@ -23,11 +23,6 @@ class TeamSchema(ma.ModelSchema):
             validate.Length(min=1, max=128, error="Team names must not be empty")
         ],
     )
-    email = field_for(
-        Teams,
-        "email",
-        validate=validate.Email("Emails must be a properly formatted email address"),
-    )
     website = field_for(
         Teams,
         "website",
@@ -85,35 +80,6 @@ class TeamSchema(ma.ModelSchema):
                 if existing_team:
                     raise ValidationError(
                         "Team name has already been taken", field_names=["name"]
-                    )
-
-    @pre_load
-    def validate_email(self, data):
-        email = data.get("email")
-        if email is None:
-            return
-
-        existing_team = Teams.query.filter_by(email=email).first()
-        if is_admin():
-            team_id = data.get("id")
-            if team_id:
-                if existing_team and existing_team.id != team_id:
-                    raise ValidationError(
-                        "Email address has already been used", field_names=["email"]
-                    )
-            else:
-                if existing_team:
-                    raise ValidationError(
-                        "Email address has already been used", field_names=["email"]
-                    )
-        else:
-            current_team = get_current_team()
-            if email == current_team.email:
-                return data
-            else:
-                if existing_team:
-                    raise ValidationError(
-                        "Email address has already been used", field_names=["email"]
                     )
 
     @pre_load
@@ -194,7 +160,6 @@ class TeamSchema(ma.ModelSchema):
         "self": [
             "website",
             "name",
-            "email",
             "country",
             "affiliation",
             "bracket",
@@ -209,7 +174,6 @@ class TeamSchema(ma.ModelSchema):
             "created",
             "country",
             "banned",
-            "email",
             "affiliation",
             "secret",
             "bracket",

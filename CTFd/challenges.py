@@ -1,7 +1,6 @@
 from flask import render_template, Blueprint
 from CTFd.utils.decorators import (
     during_ctf_time_only,
-    require_verified_emails,
     require_team,
 )
 from CTFd.utils.decorators.visibility import check_challenge_visibility
@@ -14,7 +13,6 @@ challenges = Blueprint("challenges", __name__)
 
 @challenges.route("/challenges", methods=["GET"])
 @during_ctf_time_only
-@require_verified_emails
 @check_challenge_visibility
 @require_team
 def listing():

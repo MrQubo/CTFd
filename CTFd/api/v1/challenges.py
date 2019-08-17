@@ -15,7 +15,6 @@ from CTFd.plugins.challenges import CHALLENGE_CLASSES
 from CTFd.utils.dates import isoformat
 from CTFd.utils.decorators import (
     during_ctf_time_only,
-    require_verified_emails,
     admins_only,
 )
 from CTFd.utils.decorators.visibility import (
@@ -53,7 +52,6 @@ challenges_namespace = Namespace(
 class ChallengeList(Resource):
     @check_challenge_visibility
     @during_ctf_time_only
-    @require_verified_emails
     def get(self):
         # This can return None (unauth) if visibility is set to public
         user = get_current_user()
@@ -159,7 +157,6 @@ class ChallengeTypes(Resource):
 class Challenge(Resource):
     @check_challenge_visibility
     @during_ctf_time_only
-    @require_verified_emails
     def get(self, challenge_id):
         if is_admin():
             chal = Challenges.query.filter(Challenges.id == challenge_id).first_or_404()
@@ -301,7 +298,6 @@ class Challenge(Resource):
 class ChallengeAttempt(Resource):
     @check_challenge_visibility
     @during_ctf_time_only
-    @require_verified_emails
     def post(self):
         if authed() is False:
             return {"success": True, "data": {"status": "authentication_required"}}, 403
@@ -500,7 +496,6 @@ class ChallengeSolves(Resource):
     @check_challenge_visibility
     @check_score_visibility
     @during_ctf_time_only
-    @require_verified_emails
     def get(self, challenge_id):
         response = []
         challenge = Challenges.query.filter_by(id=challenge_id).first_or_404()

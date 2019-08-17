@@ -19,6 +19,14 @@ from flask import Blueprint
 import math
 
 
+def formula(chal, solves):
+    mini = chal.minimum
+    maxi = chal.initial
+    a = 8.1
+    b = 2.43
+    return int(round(mini + (maxi - mini) / (1 + (max(0, solves - 1) / a) ** b)))
+
+
 class DynamicValueChallenge(BaseChallenge):
     id = "dynamic"  # Unique identifier used to register challenges
     name = "dynamic"  # Name of a challenge type
@@ -118,18 +126,7 @@ class DynamicValueChallenge(BaseChallenge):
             .count()
         )
 
-        # It is important that this calculation takes into account floats.
-        # Hence this file uses from __future__ import division
-        value = (
-            ((challenge.minimum - challenge.initial) / (challenge.decay ** 2))
-            * (solve_count ** 2)
-        ) + challenge.initial
-
-        value = math.ceil(value)
-
-        if value < challenge.minimum:
-            value = challenge.minimum
-
+        value = formula(challenge, solve_count)
         challenge.value = value
 
         db.session.commit()
@@ -210,20 +207,7 @@ class DynamicValueChallenge(BaseChallenge):
             .count()
         )
 
-        # We subtract -1 to allow the first solver to get max point value
-        solve_count -= 1
-
-        # It is important that this calculation takes into account floats.
-        # Hence this file uses from __future__ import division
-        value = (
-            ((chal.minimum - chal.initial) / (chal.decay ** 2)) * (solve_count ** 2)
-        ) + chal.initial
-
-        value = math.ceil(value)
-
-        if value < chal.minimum:
-            value = chal.minimum
-
+        value = formula(chal, solve_count)
         chal.value = value
 
         db.session.commit()

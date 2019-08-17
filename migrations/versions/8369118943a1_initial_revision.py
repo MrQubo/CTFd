@@ -56,7 +56,6 @@ def upgrade():
     op.create_table('teams',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=128), nullable=True),
-    sa.Column('email', sa.String(length=128), nullable=True),
     sa.Column('password', sa.String(length=128), nullable=True),
     sa.Column('secret', sa.String(length=128), nullable=True),
     sa.Column('website', sa.String(length=128), nullable=True),
@@ -67,7 +66,6 @@ def upgrade():
     sa.Column('banned', sa.Boolean(), nullable=True),
     sa.Column('created', sa.DateTime(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('email'),
     sa.UniqueConstraint('id'),
     )
     op.create_table('dynamic_challenge',
@@ -118,7 +116,6 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=128), nullable=True),
     sa.Column('password', sa.String(length=128), nullable=True),
-    sa.Column('email', sa.String(length=128), nullable=True),
     sa.Column('type', sa.String(length=80), nullable=True),
     sa.Column('secret', sa.String(length=128), nullable=True),
     sa.Column('website', sa.String(length=128), nullable=True),
@@ -132,7 +129,6 @@ def upgrade():
     sa.Column('created', sa.DateTime(), nullable=True),
     sa.ForeignKeyConstraint(['team_id'], ['teams.id'], ),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('email'),
     sa.UniqueConstraint('id'),
     )
     op.create_table('awards',

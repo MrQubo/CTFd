@@ -5,7 +5,6 @@ from CTFd.utils import get_config
 from CTFd.utils.validators import validate_country_code
 from CTFd.utils.user import is_admin, get_current_user
 from CTFd.utils.crypto import verify_password
-from CTFd.utils.email import check_email_is_whitelisted
 from CTFd.utils import string_types
 
 
@@ -22,14 +21,6 @@ class UserSchema(ma.ModelSchema):
         required=True,
         validate=[
             validate.Length(min=1, max=128, error="User names must not be empty")
-        ],
-    )
-    email = field_for(
-        Users,
-        "email",
-        validate=[
-            validate.Email("Emails must be a properly formatted email address"),
-            validate.Length(min=1, max=128, error="Emails must not be empty"),
         ],
     )
     website = field_for(
@@ -89,66 +80,6 @@ class UserSchema(ma.ModelSchema):
                     )
 
     @pre_load
-    def validate_email(self, data):
-        email = data.get("email")
-        if email is None:
-            return
-
-        existing_user = Users.query.filter_by(email=email).first()
-        current_user = get_current_user()
-        if is_admin():
-            user_id = data.get("id")
-            if user_id:
-                if existing_user and existing_user.id != user_id:
-                    raise ValidationError(
-                        "Email address has already been used", field_names=["email"]
-                    )
-            else:
-                if existing_user:
-                    if current_user:
-                        if current_user.id != existing_user.id:
-                            raise ValidationError(
-                                "Email address has already been used",
-                                field_names=["email"],
-                            )
-                    else:
-                        raise ValidationError(
-                            "Email address has already been used", field_names=["email"]
-                        )
-        else:
-            if email == current_user.email:
-                return data
-            else:
-                confirm = data.get("confirm")
-
-                if bool(confirm) is False:
-                    raise ValidationError(
-                        "Please confirm your current password", field_names=["confirm"]
-                    )
-
-                test = verify_password(
-                    plaintext=confirm, ciphertext=current_user.password
-                )
-                if test is False:
-                    raise ValidationError(
-                        "Your previous password is incorrect", field_names=["confirm"]
-                    )
-
-                if existing_user:
-                    raise ValidationError(
-                        "Email address has already been used", field_names=["email"]
-                    )
-                if check_email_is_whitelisted(email) is False:
-                    raise ValidationError(
-                        "Only email addresses under {domains} may register".format(
-                            domains=get_config("domain_whitelist")
-                        ),
-                        field_names=["email"],
-                    )
-                if get_config("verify_emails"):
-                    current_user.verified = False
-
-    @pre_load
     def validate_password_confirmation(self, data):
         password = data.get("password")
         confirm = data.get("confirm")
@@ -188,7 +119,6 @@ class UserSchema(ma.ModelSchema):
         "self": [
             "website",
             "name",
-            "email",
             "country",
             "affiliation",
             "bracket",
@@ -201,7 +131,6 @@ class UserSchema(ma.ModelSchema):
             "created",
             "country",
             "banned",
-            "email",
             "affiliation",
             "secret",
             "bracket",

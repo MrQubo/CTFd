@@ -28,12 +28,6 @@ def teams_listing():
                 .order_by(Teams.id.asc())
                 .all()
             )
-        elif field == "email":
-            teams = (
-                Teams.query.filter(Teams.email.like("%{}%".format(q)))
-                .order_by(Teams.id.asc())
-                .all()
-            )
         elif field == "affiliation":
             teams = (
                 Teams.query.filter(Teams.affiliation.like("%{}%".format(q)))

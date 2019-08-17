@@ -12,8 +12,6 @@ from CTFd.models import (
 )
 from CTFd.utils.decorators import authed_only, admins_only, ratelimit
 from CTFd.cache import clear_standings
-from CTFd.utils.config import get_mail_provider
-from CTFd.utils.email import sendmail, user_created_notification
 from CTFd.utils.user import get_current_user, is_admin
 from CTFd.utils.decorators.visibility import (
     check_account_visibility,
@@ -40,11 +38,6 @@ class UserList(Resource):
 
         return {"success": True, "data": response.data}
 
-    @users_namespace.doc(
-        params={
-            "notify": "Whether to send the created user an email with their credentials"
-        }
-    )
     @admins_only
     def post(self):
         req = request.get_json()
@@ -59,10 +52,7 @@ class UserList(Resource):
 
         if request.args.get("notify"):
             name = response.data.name
-            email = response.data.email
             password = req.get("password")
-
-            user_created_notification(addr=email, name=name, password=password)
 
         clear_standings()
 
@@ -278,30 +268,3 @@ class UserPublicAwards(Resource):
             return {"success": False, "errors": response.errors}, 400
 
         return {"success": True, "data": response.data}
-
-
-@users_namespace.route("/<int:user_id>/email")
-@users_namespace.param("user_id", "User ID")
-class UserEmails(Resource):
-    @admins_only
-    @ratelimit(method="POST", limit=10, interval=60)
-    def post(self, user_id):
-        req = request.get_json()
-        text = req.get("text", "").strip()
-        user = Users.query.filter_by(id=user_id).first_or_404()
-
-        if get_mail_provider() is None:
-            return (
-                {"success": False, "errors": {"": ["Email settings not configured"]}},
-                400,
-            )
-
-        if not text:
-            return (
-                {"success": False, "errors": {"text": ["Email text cannot be empty"]}},
-                400,
-            )
-
-        result, response = sendmail(addr=user.email, text=text)
-
-        return {"success": result, "data": {}}

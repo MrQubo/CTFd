@@ -30,12 +30,6 @@ def users_listing():
                 .order_by(Users.id.asc())
                 .all()
             )
-        elif field == "email":
-            users = (
-                Users.query.filter(Users.email.like("%{}%".format(q)))
-                .order_by(Users.id.asc())
-                .all()
-            )
         elif field == "affiliation":
             users = (
                 Users.query.filter(Users.affiliation.like("%{}%".format(q)))

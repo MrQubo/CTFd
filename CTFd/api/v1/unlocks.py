@@ -7,7 +7,6 @@ from CTFd.schemas.unlocks import UnlockSchema
 from CTFd.schemas.awards import AwardSchema
 from CTFd.utils.decorators import (
     during_ctf_time_only,
-    require_verified_emails,
     admins_only,
     authed_only,
 )
@@ -29,7 +28,6 @@ class UnlockList(Resource):
         return {"success": True, "data": response.data}
 
     @during_ctf_time_only
-    @require_verified_emails
     @authed_only
     def post(self):
         req = request.get_json()

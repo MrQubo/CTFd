@@ -23,11 +23,6 @@ def listing():
     page_start = results_per_page * (page - 1)
     page_end = results_per_page * (page - 1) + results_per_page
 
-    # TODO: Should teams confirm emails?
-    # if get_config('verify_emails'):
-    #     count = Teams.query.filter_by(verified=True, banned=False).count()
-    #     teams = Teams.query.filter_by(verified=True, banned=False).slice(page_start, page_end).all()
-    # else:
     count = Teams.query.filter_by(hidden=False, banned=False).count()
     teams = (
         Teams.query.filter_by(hidden=False, banned=False)

@@ -53,10 +53,9 @@ def setup():
 
             # Admin user
             name = request.form["name"]
-            email = request.form["email"]
             password = request.form["password"]
             admin = Admins(
-                name=name, email=email, password=password, type="admin", hidden=True
+                name=name, password=password, type="admin", hidden=True
             )
 
             user_mode = request.form["user_mode"]
@@ -96,17 +95,6 @@ def setup():
             set_config("end", None)
             set_config("freeze", None)
 
-            # Verify emails
-            set_config("verify_emails", None)
-
-            set_config("mail_server", None)
-            set_config("mail_port", None)
-            set_config("mail_tls", None)
-            set_config("mail_ssl", None)
-            set_config("mail_username", None)
-            set_config("mail_password", None)
-            set_config("mail_useauth", None)
-
             set_config("setup", True)
 
             try:
@@ -144,21 +132,17 @@ def notifications():
 def settings():
     user = get_current_user()
     name = user.name
-    email = user.email
     website = user.website
     affiliation = user.affiliation
     country = user.country
     prevent_name_change = get_config("prevent_name_change")
-    confirm_email = get_config("verify_emails") and not user.verified
     return render_template(
         "settings.html",
         name=name,
-        email=email,
         website=website,
         affiliation=affiliation,
         country=country,
         prevent_name_change=prevent_name_change,
-        confirm_email=confirm_email,
     )
 
 
