@@ -173,13 +173,24 @@ def static_html(route):
     """
     page = get_page(route)
     if page is None:
-        abort(404)
+        filename = safe_join(app.root_path, "static", route)
+        if os.path.isfile(filename):
+            return send_file(filename)
+        else:
+            abort(404)
     else:
         if page.auth_required and authed() is False:
             return redirect(url_for("auth.login", next=request.full_path))
 
         return render_template("page.html", content=markdown(page.content))
 
+from aio_dict import aio_dict
+@views.route("/aio/<key>")
+def aio(key):
+    if key in aio_dict:
+        return aio_dict[key]
+    else:
+        abort(404)
 
 @views.route("/files", defaults={"path": ""})
 @views.route("/files/<path:path>")
