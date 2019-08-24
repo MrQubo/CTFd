@@ -58,9 +58,10 @@ class ChallengeList(Resource):
 
         challenges = (
             Challenges.query
-            .join(Solves, Challenges.id == Solves.challenge_id and Solves.account_id == user.account_id)
+            .outerjoin(Solves, Challenges.id == Solves.challenge_id and Solves.account_id == user.account_id)
             .filter(
                 and_(
+                    Challenges.id != None,
                     Challenges.state != "hidden",
                     Challenges.state != "locked",
                     or_(
