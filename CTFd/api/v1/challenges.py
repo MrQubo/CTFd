@@ -40,7 +40,7 @@ from CTFd.plugins.challenges import get_chal_class
 from CTFd.utils.dates import ctf_ended, ctf_paused, ctftime
 from CTFd.utils.logging import log
 from CTFd.utils.security.signing import serialize
-from sqlalchemy.sql import and_
+from sqlalchemy.sql import and_, or_
 import datetime
 
 challenges_namespace = Namespace(
@@ -57,8 +57,17 @@ class ChallengeList(Resource):
         user = get_current_user()
 
         challenges = (
-            Challenges.query.filter(
-                and_(Challenges.state != "hidden", Challenges.state != "locked")
+            Challenges.query
+            .join(Solves, Challenges.id == Solves.challenge_id and Solves.account_id == user.account_id)
+            .filter(
+                and_(
+                    Challenges.state != "hidden",
+                    Challenges.state != "locked",
+                    or_(
+                        Challenges.is_secret != True,
+                        Solves.id != None,
+                    )
+                ),
             )
             .order_by(Challenges.value)
             .all()
@@ -163,7 +172,11 @@ class Challenge(Resource):
         else:
             chal = Challenges.query.filter(
                 Challenges.id == challenge_id,
-                and_(Challenges.state != "hidden", Challenges.state != "locked"),
+                and_(
+                    Challenges.state != "hidden",
+                    Challenges.state != "locked",
+                    not Challenges.is_secret,
+                ),
             ).first_or_404()
 
         chal_class = get_chal_class(chal.type)
@@ -294,6 +307,152 @@ class Challenge(Resource):
         return {"success": True}
 
 
+@challenges_namespace.route("/secret_attempt")
+class SecretChallengeAttempt(Resource):
+    def attempt_single(self, request, request_data, user, team, kpm, challenge):
+        challenge_id = challenge.id
+
+        if challenge.state == "hidden":
+            return False, ''
+
+        if challenge.state == "locked":
+            return False, ''
+
+        if challenge.requirements:
+            requirements = challenge.requirements.get("prerequisites", [])
+            solve_ids = (
+                Solves.query.with_entities(Solves.challenge_id)
+                .filter_by(account_id=user.account_id)
+                .order_by(Solves.challenge_id.asc())
+                .all()
+            )
+            solve_ids = set([solve_id for solve_id, in solve_ids])
+            prereqs = set(requirements)
+            if solve_ids >= prereqs:
+                pass
+            else:
+                return False, ''
+
+        chal_class = get_chal_class(challenge.type)
+
+        solves = Solves.query.filter_by(
+            account_id=user.account_id, challenge_id=challenge_id
+        ).first()
+
+        # Challenge not solved yet
+        if not solves:
+            status, message = chal_class.attempt(challenge, request)
+            if status:  # The challenge plugin says the input is right
+                if ctftime() or current_user.is_admin():
+                    chal_class.solve(
+                        user=user, team=team, challenge=challenge, request=request
+                    )
+                    clear_standings()
+
+                log(
+                    "submissions",
+                    "[{date}] {name} submitted {submission} with kpm {kpm} [CORRECT]",
+                    submission=request_data["submission"].encode("utf-8"),
+                    kpm=kpm,
+                )
+                return True, message
+            else:  # The challenge plugin says the input is wrong
+                if ctftime() or current_user.is_admin():
+                    clear_standings()
+
+                log(
+                    "submissions",
+                    "[{date}] {name} submitted {submission} with kpm {kpm} [WRONG]",
+                    submission=request_data["submission"].encode("utf-8"),
+                    kpm=kpm,
+                )
+
+                return False, message
+
+        # Challenge already solved
+        else:
+            log(
+                "submissions",
+                "[{date}] {name} submitted {submission} with kpm {kpm} [ALREADY SOLVED]",
+                submission=request_data["submission"].encode("utf-8"),
+                kpm=kpm,
+            )
+            return False, ''
+
+    @check_challenge_visibility
+    @during_ctf_time_only
+    def post(self):
+        if authed() is False:
+            return {"success": True, "data": {"status": "authentication_required"}}, 403
+
+        if ctf_paused():
+            return (
+                {
+                    "success": True,
+                    "data": {
+                        "status": "paused",
+                        "message": "{} is paused".format(config.ctf_name()),
+                    },
+                },
+                403,
+            )
+
+        if request.content_type != "application/json":
+            request_data = request.form
+        else:
+            request_data = request.get_json()
+
+        user = get_current_user()
+        team = get_current_team()
+
+        if config.is_teams_mode() and team is None:
+            abort(403)
+
+        # Anti-bruteforce / submitting Flags too quickly
+        kpm = current_user.get_wrong_submissions_per_minute(user.account_id)
+        if kpm > 10:
+            log(
+                "submissions",
+                "[{date}] {name} submitted {submission} with kpm {kpm} [TOO FAST]",
+                submission=request_data["submission"].encode("utf-8"),
+                kpm=kpm,
+            )
+            # Submitting too fast
+            return (
+                {
+                    "success": True,
+                    "data": {
+                        "status": "ratelimited",
+                        "message": "You're submitting flags too fast. Slow down.",
+                    },
+                },
+                429,
+            )
+
+        challs = Challenges.query.all()
+        for challenge in challs:
+            correct, message = self.attempt_single(request, request_data, user, team, kpm, challenge)
+            if correct:
+                return {
+                    "success": True,
+                    "data": {"status": "correct", "message": message},
+                }
+
+        chal_class = get_chal_class('standard')
+        challenge = Challenges.query.filter_by(name='__SECRET__').first_or_404()
+        chal_class.fail(
+            user=user, team=team, challenge=challenge, request=request
+        )
+
+        return {
+            "success": True,
+            "data": {
+                "status": "incorrect",
+                "message": "Incorrect flag.",
+            },
+        }
+
+
 @challenges_namespace.route("/attempt")
 class ChallengeAttempt(Resource):
     @check_challenge_visibility
@@ -339,20 +498,19 @@ class ChallengeAttempt(Resource):
         user = get_current_user()
         team = get_current_team()
 
-        # TODO: Convert this into a re-useable decorator
-        if config.is_teams_mode() and team is None:
-            abort(403)
-
         fails = Fails.query.filter_by(
             account_id=user.account_id, challenge_id=challenge_id
         ).count()
 
         challenge = Challenges.query.filter_by(id=challenge_id).first_or_404()
 
-        if challenge.state == "hidden":
+        if challenge.state == "hidden" or challenge.is_secret:
             abort(404)
 
         if challenge.state == "locked":
+            abort(403)
+
+        if config.is_teams_mode() and team is None:
             abort(403)
 
         if challenge.requirements:

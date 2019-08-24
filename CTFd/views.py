@@ -12,7 +12,7 @@ from flask import (
 )
 from flask.helpers import safe_join
 
-from CTFd.models import db, Users, Admins, Teams, Files, Pages, Notifications
+from CTFd.models import db, Users, Admins, Teams, Files, Pages, Notifications, Challenges
 from CTFd.utils import markdown
 from CTFd.cache import cache
 from CTFd.utils import get_config, set_config
@@ -97,6 +97,8 @@ def setup():
 
             set_config("setup", True)
 
+            secret = Challenges(name='__SECRET__', value=500, type='standard', state='hidden')
+
             try:
                 db.session.add(admin)
                 db.session.commit()
@@ -105,6 +107,12 @@ def setup():
 
             try:
                 db.session.add(page)
+                db.session.commit()
+            except IntegrityError:
+                db.session.rollback()
+
+            try:
+                db.session.add(secret)
                 db.session.commit()
             except IntegrityError:
                 db.session.rollback()

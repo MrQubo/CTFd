@@ -104,6 +104,15 @@
 		</select>
 	</div>
 
+	<div class="form-group">
+		<label>
+			Secret<br>
+			<small class="form-text text-muted">Secret challenges aren't visible until solved.</small>
+		</label>
+
+                <input type="checkbox" name="is_secret" {% if challenge.is_secret %}checked{% endif %}>
+	</div>
+
 	<div>
 		<button class="btn btn-success btn-outlined float-right" type="submit">
 			Update

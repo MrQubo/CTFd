@@ -2,6 +2,41 @@ var challenges;
 var user_solves = [];
 var templates = {};
 
+window.secret_submit = function (cb, preview) {
+    var submission = $('#secret-submission-input').val();
+    var url = "/api/v1/challenges/secret_attempt";
+
+    if (preview) {
+        url += "?preview=true";
+    }
+
+    var params = {
+        'submission': submission
+    };
+
+    CTFd.fetch(url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(params)
+    }).then(function (response) {
+        if (response.status === 429) {
+            // User was ratelimited but process response
+            return response.json();
+        }
+        if (response.status === 403) {
+            // User is not logged in or CTF is paused.
+            return response.json();
+        }
+        return response.json();
+    }).then(function (response) {
+        cb(response);
+    });
+};
+
 window.challenge = new Object();
 
 function loadchal(id) {
@@ -27,6 +62,112 @@ function loadchalbyname(chalname) {
   })[0];
 
   updateChalWindow(obj);
+}
+
+function updateSecretInput() {
+  $("#secret-submit-key").click(function(e) {
+    e.preventDefault();
+    $("#secret-submit-key").addClass("disabled-button");
+    $("#secret-submit-key").prop("disabled", true);
+    window.secret_submit(function(data) {
+      renderSecretSubmissionResponse(data);
+      loadchals(function() {
+        marksolves();
+      });
+    });
+  });
+
+  $("#secret-submission-input").keyup(function(event) {
+    if (event.keyCode == 13) {
+      $("#secret-submit-key").click();
+    }
+  });
+}
+
+function renderSecretSubmissionResponse(response, cb) {
+  var result = response.data;
+
+  var result_message = $("#secret-result-message");
+  var result_notification = $("#secret-result-notification");
+  var answer_input = $("#secret-submission-input");
+  result_notification.removeClass();
+  result_message.text(result.message);
+
+  if (result.status === "authentication_required") {
+    window.location =
+      script_root +
+      "/login?next=" +
+      script_root +
+      window.location.pathname +
+      window.location.hash;
+    return;
+  } else if (result.status === "incorrect") {
+    // Incorrect key
+    result_notification.addClass(
+      "alert alert-danger alert-dismissable text-center"
+    );
+    result_notification.slideDown();
+
+    answer_input.removeClass("correct");
+    answer_input.addClass("wrong");
+    setTimeout(function() {
+      answer_input.removeClass("wrong");
+    }, 3000);
+  } else if (result.status === "correct") {
+    // Challenge Solved
+    result_notification.addClass(
+      "alert alert-success alert-dismissable text-center"
+    );
+    result_notification.slideDown();
+
+    $(".challenge-solves").text(
+      parseInt(
+        $(".challenge-solves")
+          .text()
+          .split(" ")[0]
+      ) +
+        1 +
+        " Solves"
+    );
+
+    answer_input.val("");
+    answer_input.removeClass("wrong");
+    answer_input.addClass("correct");
+  } else if (result.status === "already_solved") {
+    // Challenge already solved
+    result_notification.addClass(
+      "alert alert-info alert-dismissable text-center"
+    );
+    result_notification.slideDown();
+
+    answer_input.addClass("correct");
+  } else if (result.status === "paused") {
+    // CTF is paused
+    result_notification.addClass(
+      "alert alert-warning alert-dismissable text-center"
+    );
+    result_notification.slideDown();
+  } else if (result.status === "ratelimited") {
+    // Keys per minute too high
+    result_notification.addClass(
+      "alert alert-warning alert-dismissable text-center"
+    );
+    result_notification.slideDown();
+
+    answer_input.addClass("too-fast");
+    setTimeout(function() {
+      answer_input.removeClass("too-fast");
+    }, 3000);
+  }
+  setTimeout(function() {
+    $(".alert").slideUp();
+    $("#secret-submit-key").removeClass("disabled-button");
+    $("#secret-submit-key").prop("disabled", false);
+  }, 3000);
+
+  if (cb) {
+    cb(result);
+  }
 }
 
 function updateChalWindow(obj) {
@@ -390,6 +531,7 @@ function update(cb) {
 }
 
 $(function() {
+  updateSecretInput();
   update(function() {
     load_location_hash();
   });
