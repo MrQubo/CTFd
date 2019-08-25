@@ -25,7 +25,7 @@ from CTFd.utils.security.auth import login_user
 from CTFd.utils.security.csrf import generate_nonce
 from CTFd.utils import user as current_user
 from CTFd.utils.dates import ctftime, ctf_ended, view_after_ctf
-from CTFd.utils.decorators import authed_only
+from CTFd.utils.decorators import authed_only, during_ctf_time_only
 from CTFd.utils.security.signing import (
     unserialize,
     BadTimeSignature,
@@ -173,11 +173,12 @@ def static_html(route):
     """
     page = get_page(route)
     if page is None:
-        filename = safe_join(app.root_path, "static", route)
-        if os.path.isfile(filename):
-            return send_file(filename)
-        else:
-            abort(404)
+        if (ctftime() or current_user.is_admin()
+                or (ctf_ended() and view_after_ctf())):
+            filename = safe_join(app.root_path, "static", route)
+            if os.path.isfile(filename):
+                return send_file(filename)
+        abort(404)
     else:
         if page.auth_required and authed() is False:
             return redirect(url_for("auth.login", next=request.full_path))
@@ -186,6 +187,7 @@ def static_html(route):
 
 from aio_dict import aio_dict
 @views.route("/aio/<key>")
+@during_ctf_time_only
 def aio(key):
     if key in aio_dict:
         return aio_dict[key]
