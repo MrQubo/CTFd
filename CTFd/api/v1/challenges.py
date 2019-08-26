@@ -174,9 +174,13 @@ class Challenge(Resource):
             chal = Challenges.query.filter(
                 Challenges.id == challenge_id,
                 and_(
+                    Challenges.id != None,
                     Challenges.state != "hidden",
                     Challenges.state != "locked",
-                    not Challenges.is_secret,
+                    or_(
+                        Challenges.is_secret != True,
+                        Solves.id != None,
+                    )
                 ),
             ).first_or_404()
 
