@@ -52,17 +52,16 @@ def get_user_all_challenges():
     user = get_current_user()
 
     return (
-        Solves.query
-        .filter(Solves.account_id == user.account_id)
-        .outerjoin(Challenges, Challenges.id == Solves.challenge_id)
+        Challenges.query
+        .outerjoin(Solves, Challenges.id == Solves.challenge_id)
         .filter(
             and_(
                 Challenges.id != None,
                 Challenges.state != "hidden",
                 Challenges.state != "locked",
                 or_(
-                    Challenges.is_secret != True,
-                    Solves.id != None,
+                    Challenges.is_secret == False,
+                    Solves.account_id == user.account_id,
                 ),
             ),
         )
@@ -77,22 +76,16 @@ def get_user_challenge_by_id(challenge_id):
     else:
         user = get_current_user()
         return (
-            Solves.query
-            .filter(
-                and_(
-                    Solves.account_id == user.account_id,
-                    Solves.challenge_id == user.challenge_id,
-                ),
-            )
-            .outerjoin(Challenges, Challenges.id == Solves.challenge_id)
+            Challenges.query
+            .outerjoin(Solves, Challenges.id == Solves.challenge_id)
             .filter(
                 and_(
                     Challenges.id == challenge_id,
                     Challenges.state != "hidden",
                     Challenges.state != "locked",
                     or_(
-                        Challenges.is_secret != True,
-                        Solves.id != None,
+                        Challenges.is_secret == False,
+                        Solves.account_id == user.account_id,
                     ),
                 ),
             )
