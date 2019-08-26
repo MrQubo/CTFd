@@ -427,6 +427,11 @@ class Teams(db.Model):
         if freeze and admin is False:
             dt = datetime.datetime.utcfromtimestamp(freeze)
             solves = solves.filter(Solves.date < dt)
+        if not admin:
+            solves = (solves
+                .join(Challenges, Solves.challenge_id == Challenges.id)
+                .filter(Challenges.is_secret == False)
+            )
 
         return solves.all()
 
