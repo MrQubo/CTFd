@@ -220,7 +220,8 @@ class UserPublicSolves(Resource):
         if response.errors:
             return {"success": False, "errors": response.errors}, 400
 
-        return {"success": True, "data": response.data}
+        #  return {"success": True, "data": response.data}
+        return {"success": True, "data": None}
 
 
 @users_namespace.route("/<user_id>/fails")
@@ -246,7 +247,8 @@ class UserPublicFails(Resource):
             data = []
         count = len(response.data)
 
-        return {"success": True, "data": data, "meta": {"count": count}}
+        #  return {"success": True, "data": data, "meta": {"count": count}}
+        return {"success": True, "data": None, "meta": {"count": None}}
 
 
 @users_namespace.route("/<user_id>/awards")
@@ -267,4 +269,5 @@ class UserPublicAwards(Resource):
         if response.errors:
             return {"success": False, "errors": response.errors}, 400
 
-        return {"success": True, "data": response.data}
+        #  return {"success": True, "data": response.data}
+        return {"success": True, "data": None}

@@ -48,19 +48,43 @@ challenges_namespace = Namespace(
 )
 
 
-@challenges_namespace.route("")
-class ChallengeList(Resource):
-    @check_challenge_visibility
-    @during_ctf_time_only
-    def get(self):
-        # This can return None (unauth) if visibility is set to public
-        user = get_current_user()
+def get_user_all_challenges():
+    user = get_current_user()
 
-        challenges = (
+    return (
+        Challenges.query
+        .outerjoin(Solves, Challenges.id == Solves.challenge_id)
+        .filter(
+            and_(
+                or_(
+                    Solves.account_id == None,
+                    Solves.account_id == user.account_id,
+                ),
+                Challenges.id != None,
+                Challenges.state != "hidden",
+                Challenges.state != "locked",
+                or_(
+                    Challenges.is_secret != True,
+                    Solves.id != None,
+                ),
+            ),
+        )
+        .order_by(Challenges.value)
+        .all()
+    )
+
+
+def get_user_challenge_by_id(challenge_id):
+    if is_admin():
+        return Challenges.query.filter_by(id=challenge_id).first_or_404()
+    else:
+        user = get_current_user()
+        return (
             Challenges.query
             .outerjoin(Solves, Challenges.id == Solves.challenge_id)
             .filter(
                 and_(
+                    Challenges.id == challenge_id,
                     or_(
                         Solves.account_id == None,
                         Solves.account_id == user.account_id,
@@ -74,9 +98,18 @@ class ChallengeList(Resource):
                     ),
                 ),
             )
-            .order_by(Challenges.value)
-            .all()
+            .first_or_404()
         )
+
+
+@challenges_namespace.route("")
+class ChallengeList(Resource):
+    @check_challenge_visibility
+    @during_ctf_time_only
+    def get(self):
+        # This can return None (unauth) if visibility is set to public
+        user = get_current_user()
+        challenges = get_user_all_challenges()
 
         if user:
             solve_ids = (
@@ -174,30 +207,7 @@ class Challenge(Resource):
     def get(self, challenge_id):
         user = get_current_user()
 
-        if is_admin():
-            chal = Challenges.query.filter(Challenges.id == challenge_id).first_or_404()
-        else:
-            chal = (
-                Challenges.query
-                .outerjoin(Solves, Challenges.id == Solves.challenge_id)
-                .filter(
-                    and_(
-                        Challenges.id == challenge_id,
-                        or_(
-                            Solves.account_id == None,
-                            Solves.account_id == user.account_id,
-                        ),
-                        Challenges.id != None,
-                        Challenges.state != "hidden",
-                        Challenges.state != "locked",
-                        or_(
-                            Challenges.is_secret != True,
-                            Solves.id != None,
-                        ),
-                    ),
-                )
-                .first_or_404()
-            )
+        chal = get_user_challenge_by_id(challenge_id)
 
         chal_class = get_chal_class(chal.type)
 
@@ -380,23 +390,10 @@ class SecretChallengeAttempt(Resource):
                 if ctftime() or current_user.is_admin():
                     clear_standings()
 
-                log(
-                    "submissions",
-                    "[{date}] {name} submitted {submission} with kpm {kpm} [WRONG]",
-                    submission=request_data["submission"].encode("utf-8"),
-                    kpm=kpm,
-                )
-
                 return False, message
 
         # Challenge already solved
         else:
-            log(
-                "submissions",
-                "[{date}] {name} submitted {submission} with kpm {kpm} [ALREADY SOLVED]",
-                submission=request_data["submission"].encode("utf-8"),
-                kpm=kpm,
-            )
             return False, ''
 
     @check_challenge_visibility
@@ -676,7 +673,7 @@ class ChallengeSolves(Resource):
     @during_ctf_time_only
     def get(self, challenge_id):
         response = []
-        challenge = Challenges.query.filter_by(id=challenge_id).first_or_404()
+        challenge = get_user_challenge_by_id()
 
         # TODO: Need a generic challenge visibility call.
         # However, it should be stated that a solve on a gated challenge is not considered private.

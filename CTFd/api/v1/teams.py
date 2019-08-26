@@ -304,7 +304,8 @@ class TeamPublicSolves(Resource):
         if response.errors:
             return {"success": False, "errors": response.errors}, 400
 
-        return {"success": True, "data": response.data}
+        #  return {"success": True, "data": response.data}
+        return {"success": True, "data": None}
 
 
 @teams_namespace.route("/<team_id>/fails")
@@ -333,7 +334,8 @@ class TeamPublicFails(Resource):
             data = []
         count = len(response.data)
 
-        return {"success": True, "data": data, "meta": {"count": count}}
+        #  return {"success": True, "data": data, "meta": {"count": count}}
+        return {"success": True, "data": None, "meta": {"count": None}}
 
 
 @teams_namespace.route("/<team_id>/awards")
@@ -354,4 +356,5 @@ class TeamPublicAwards(Resource):
         if response.errors:
             return {"success": False, "errors": response.errors}, 400
 
-        return {"success": True, "data": response.data}
+        #  return {"success": True, "data": response.data}
+        return {"success": True, "data": None}
