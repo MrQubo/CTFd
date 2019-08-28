@@ -664,7 +664,7 @@ class ChallengeSolves(Resource):
     @during_ctf_time_only
     def get(self, challenge_id):
         response = []
-        challenge = get_user_challenge_by_id()
+        challenge = get_user_challenge_by_id(challenge_id)
 
         # TODO: Need a generic challenge visibility call.
         # However, it should be stated that a solve on a gated challenge is not considered private.
